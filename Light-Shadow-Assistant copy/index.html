@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Light & Shadow Assistant</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #f4f4f6;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      min-height: 100vh;
+    }
+
+    .controls {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .controls h1 {
+      font-size: 24px;
+      margin: 0 0 8px 0;
+      line-height: 1.15;
+    }
+
+    .controls p {
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 15px;
+    }
+
+    .group {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #ececec;
+    }
+
+    .group h2 {
+      font-size: 16px;
+      margin: 0 0 12px 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select,
+    button,
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select,
+    button {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .range-row {
+      margin-bottom: 14px;
+    }
+
+    .range-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .preset-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 12px 0 8px 0;
+    }
+
+    .preset-buttons button {
+      font-size: 12px;
+      padding: 8px;
+      margin-top: 0;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 100vh;
+    }
+
+    #scene {
+      width: 100%;
+      height: 100vh;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      max-width: 360px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .overlay strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="controls">
+      <h1>Light & Shadow<br />Assistant</h1>
+      <p>
+        This prototype lets you switch between a sphere, cube, and cylinder while
+        moving a single light source in real time.
+      </p>
+
+      <div class="group">
+        <h2>Shape Selection</h2>
+        <label for="shapeSelect">Choose a 3D shape</label>
+        <select id="shapeSelect">
+          <option value="sphere">Sphere</option>
+          <option value="cube">Cube</option>
+          <option value="cylinder">Cylinder</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <h2>Light Position</h2>
+
+        <div class="range-row">
+          <div class="range-meta"><span>Light X</span><span id="lightXValue">6.0</span></div>
+          <input id="lightX" type="range" min="-10" max="10" step="0.1" value="6" />
+        </div>
+
+        <div class="range-row">
+          <div class="range-meta"><span>Light Y</span><span id="lightYValue">8.0</span></div>
+          <input id="lightY" type="range" min="0" max="15" step="0.1" value="8" />
+        </div>
+
+        <div class="range-row">
+          <div class="range-meta"><span>Light Z</span><span id="lightZValue">6.0</span></div>
+          <input id="lightZ" type="range" min="-10" max="10" step="0.1" value="6" />
+        </div>
+
+        <div class="range-row">
+          <div class="range-meta"><span>Intensity</span><span id="lightIntensityValue">1.5</span></div>
+          <input id="lightIntensity" type="range" min="0.2" max="3" step="0.1" value="1.5" />
+        </div>
+
+        <h2>Lighting Presets</h2>
+        <div class="preset-buttons">
+          <button class="presetBtn" data-x="0" data-y="12" data-z="4">Top Light</button>
+          <button class="presetBtn" data-x="-8" data-y="6" data-z="4">Left Light</button>
+          <button class="presetBtn" data-x="8" data-y="6" data-z="4">Right Light</button>
+          <button class="presetBtn" data-x="-7" data-y="2" data-z="6">Low Dramatic</button>
+        </div>
+
+        <button id="resetBtn">Reset Scene</button>
+        <div class="note">
+          Tip: Move the light low and to one side to make the cast shadow longer.
+        </div>
+      </div>
+    </aside>
+
+    <main class="canvas-wrap">
+      <canvas id="scene"></canvas>
+      <div class="overlay">
+        <strong>What to look for</strong>
+        The yellow sphere shows the light source. The arrow points toward the object.
+        The brightest area faces the light, and the shadow falls in the opposite direction.
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf0f0f0);
+
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(10, 8, 12);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.target.set(0, 1.5, 0);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1.5);
+    light.position.set(6, 8, 6);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    light.shadow.camera.left = -12;
+    light.shadow.camera.right = 12;
+    light.shadow.camera.top = 12;
+    light.shadow.camera.bottom = -12;
+    light.shadow.camera.near = 0.5;
+    light.shadow.camera.far = 40;
+    scene.add(light);
+
+    light.target.position.set(0, 1.5, 0);
+    scene.add(light.target);
+
+    const lightMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffcc33 })
+    );
+    scene.add(lightMarker);
+
+    const lightArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(-1, -1, -1).normalize(),
+      light.position.clone(),
+      5,
+      0xffcc33,
+      0.6,
+      0.35
+    );
+    scene.add(lightArrow);
+
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 30),
+      new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 1 })
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.receiveShadow = true;
+    scene.add(plane);
+
+    const objectMaterial = new THREE.MeshStandardMaterial({
+      color: 0xaaaaaa,
+      roughness: 0.55,
+      metalness: 0.05
+    });
+
+    let activeMesh = null;
+
+    function createShape(type) {
+      if (activeMesh) {
+        scene.remove(activeMesh);
+        activeMesh.geometry.dispose();
+      }
+
+      let geometry;
+
+      if (type === 'sphere') {
+        geometry = new THREE.SphereGeometry(1.5, 64, 64);
+      } else if (type === 'cube') {
+        geometry = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+      } else {
+        geometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 64);
+      }
+
+      activeMesh = new THREE.Mesh(geometry, objectMaterial);
+      activeMesh.position.set(0, 1.5, 0);
+      activeMesh.castShadow = true;
+      scene.add(activeMesh);
+    }
+
+    const dom = {
+      shapeSelect: document.getElementById('shapeSelect'),
+      lightX: document.getElementById('lightX'),
+      lightY: document.getElementById('lightY'),
+      lightZ: document.getElementById('lightZ'),
+      lightIntensity: document.getElementById('lightIntensity'),
+      resetBtn: document.getElementById('resetBtn'),
+      lightXValue: document.getElementById('lightXValue'),
+      lightYValue: document.getElementById('lightYValue'),
+      lightZValue: document.getElementById('lightZValue'),
+      lightIntensityValue: document.getElementById('lightIntensityValue')
+    };
+
+    function updateLightVisual() {
+      const targetPosition = new THREE.Vector3(0, 1.5, 0);
+      const lightPosition = light.position.clone();
+
+      lightMarker.position.copy(lightPosition);
+
+      const direction = targetPosition.clone().sub(lightPosition).normalize();
+      const distance = lightPosition.distanceTo(targetPosition);
+
+      lightArrow.position.copy(lightPosition);
+      lightArrow.setDirection(direction);
+      lightArrow.setLength(distance, 0.6, 0.35);
+    }
+
+    function updateLightFromControls() {
+      const x = parseFloat(dom.lightX.value);
+      const y = parseFloat(dom.lightY.value);
+      const z = parseFloat(dom.lightZ.value);
+      const intensity = parseFloat(dom.lightIntensity.value);
+
+      light.position.set(x, y, z);
+      light.intensity = intensity;
+
+      dom.lightXValue.textContent = x.toFixed(1);
+      dom.lightYValue.textContent = y.toFixed(1);
+      dom.lightZValue.textContent = z.toFixed(1);
+      dom.lightIntensityValue.textContent = intensity.toFixed(1);
+
+      updateLightVisual();
+    }
+
+    function applyPreset(x, y, z) {
+      dom.lightX.value = x;
+      dom.lightY.value = y;
+      dom.lightZ.value = z;
+      updateLightFromControls();
+    }
+
+    function resetScene() {
+      dom.shapeSelect.value = 'sphere';
+      dom.lightX.value = '6';
+      dom.lightY.value = '8';
+      dom.lightZ.value = '6';
+      dom.lightIntensity.value = '1.5';
+
+      createShape('sphere');
+      updateLightFromControls();
+
+      camera.position.set(10, 8, 12);
+      controls.target.set(0, 1.5, 0);
+      controls.update();
+    }
+
+    dom.shapeSelect.addEventListener('change', (e) => {
+      createShape(e.target.value);
+    });
+
+    dom.lightX.addEventListener('input', updateLightFromControls);
+    dom.lightY.addEventListener('input', updateLightFromControls);
+    dom.lightZ.addEventListener('input', updateLightFromControls);
+    dom.lightIntensity.addEventListener('input', updateLightFromControls);
+    dom.resetBtn.addEventListener('click', resetScene);
+
+    document.querySelectorAll('.presetBtn').forEach((button) => {
+      button.addEventListener('click', () => {
+        applyPreset(button.dataset.x, button.dataset.y, button.dataset.z);
+      });
+    });
+
+    function resizeRenderer() {
+      const wrap = canvas.parentElement;
+      const width = wrap.clientWidth;
+      const height = wrap.clientHeight;
+
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resizeRenderer);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    resetScene();
+    resizeRenderer();
+    animate();
+  </script>
+</body>
+</html>
